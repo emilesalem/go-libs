@@ -6,6 +6,7 @@ import (
 
 	"github.com/apex/log"
 	consul "github.com/hashicorp/consul/api"
+	consulWatch "github.com/hashicorp/consul/watch"
 )
 
 const ServiceDiscoveryRefreshDuration = 10 * time.Second
@@ -25,11 +26,20 @@ https://godoc.org/github.com/hashicorp/consul/watch#Plan
 https://godoc.org/github.com/hashicorp/consul/api#CatalogService
 
 */
-func watchService(serviceName string) {
+func watchService(serviceName string, client *consul.Client) {
 	watchQuery := make(map[string]interface{})
 	watchQuery["type"] = "service"
 	watchQuery["service"] = serviceName
-
+	plan, err := consulWatch.Parse(watchQuery)
+	if err != nil {
+		log.WithError(err).Error("cant parse watch query parameters")
+	} else {
+		log.Info(fmt.Sprintf("plan info! %v", plan))
+	}
+	plan.Handler = func (someInt uint64, result consul.CatalogService) {
+		log.Info(fmt.Sprintf("%v", result.Address))
+	}
+	plan.RunWithClientAndLogger(client, nil)
 }
 
 func findService(catalog *consul.Catalog, serviceInfo *ServiceInfo) {
@@ -63,17 +73,18 @@ func discover(serviceInfo *ServiceInfo) {
 		log.WithError(err).Error("can't connect to consul")
 	} else {
 		findService(client.Catalog(), serviceInfo)
+		watchService(serviceInfo.Name, client)
 	}
 }
 
 func WatchService(serviceName string) *string {
 	serviceInfo := &ServiceInfo{serviceName, ""}
 	discover(serviceInfo) // invoke first tick
-	ticker := time.NewTicker(ServiceDiscoveryRefreshDuration)
-	go func() {
-		for range ticker.C {
-			discover(serviceInfo)
-		}
-	}()
+	// ticker := time.NewTicker(ServiceDiscoveryRefreshDuration)
+	// go func() {
+	// 	for range ticker.C {
+	// 		discover(serviceInfo)
+	// 	}
+	// }()
 	return &serviceInfo.URL
 }
