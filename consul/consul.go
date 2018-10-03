@@ -1,17 +1,35 @@
 package consul
 
 import (
-	consul "github.com/hashicorp/consul/api"
-	"github.com/apex/log"
-	"strconv"
+	"fmt"
 	"time"
+
+	"github.com/apex/log"
+	consul "github.com/hashicorp/consul/api"
 )
 
 const ServiceDiscoveryRefreshDuration = 10 * time.Second
 
-type ServiceInfo struct { 
+type ServiceInfo struct {
 	Name string
 	URL  string
+}
+
+/*
+see:
+https://www.consul.io/docs/agent/watches.html
+https://github.com/hashicorp/consul/blob/master/watch/plan.go
+https://github.com/hashicorp/consul/blob/master/watch/watch.go#L116
+https://gowalker.org/github.com/hashicorp/consul/watch#WatcherFunc
+https://godoc.org/github.com/hashicorp/consul/watch#Plan
+https://godoc.org/github.com/hashicorp/consul/api#CatalogService
+
+*/
+func watchService(serviceName string) {
+	watchQuery := make(map[string]interface{})
+	watchQuery["type"] = "service"
+	watchQuery["service"] = serviceName
+
 }
 
 func findService(catalog *consul.Catalog, serviceInfo *ServiceInfo) {
@@ -19,7 +37,7 @@ func findService(catalog *consul.Catalog, serviceInfo *ServiceInfo) {
 
 	if err != nil {
 		log.WithError(err).Error("can't get services from catalog")
-		return 
+		return
 	}
 
 	if len(services) <= 0 {
@@ -28,7 +46,7 @@ func findService(catalog *consul.Catalog, serviceInfo *ServiceInfo) {
 	}
 
 	for _, s := range services {
-		if url := "http://" + s.ServiceAddress + ":" + strconv.Itoa(s.ServicePort); url != serviceInfo.URL {
+		if url := fmt.Sprintf("http://%v:%v", s.ServiceAddress, s.ServicePort); url != serviceInfo.URL {
 			log.WithFields(log.Fields{
 				"name": serviceInfo.Name,
 				"url":  url,
@@ -48,7 +66,7 @@ func discover(serviceInfo *ServiceInfo) {
 	}
 }
 
-func WatchService(serviceName string) *string{
+func WatchService(serviceName string) *string {
 	serviceInfo := &ServiceInfo{serviceName, ""}
 	discover(serviceInfo) // invoke first tick
 	ticker := time.NewTicker(ServiceDiscoveryRefreshDuration)
