@@ -3,6 +3,8 @@
 package consul
 
 import (
+	"fmt"
+
 	"github.com/apex/log"
 	consul "github.com/hashicorp/consul/api"
 	consulWatch "github.com/hashicorp/consul/watch"
@@ -48,6 +50,7 @@ func selectNodeAddress(serviceInfo *ServiceInfo, nodes []*consul.ServiceEntry) {
 		if len(serviceAddress) == 0 {
 			serviceAddress = n.Node.Address
 		}
+		serviceAddress = fmt.Sprintf("%s:%v", serviceAddress, n.Service.Port)
 		if serviceAddress != serviceInfo.URL {
 			log.WithFields(log.Fields{
 				"name": serviceInfo.Name,

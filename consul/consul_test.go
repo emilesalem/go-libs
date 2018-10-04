@@ -15,7 +15,13 @@ func TestWatchServiceTest(t *testing.T) {
 			"got", "nothing",
 		)
 	} else {
-		log.Info(fmt.Sprintf("test success, got URL: %s", *url))
+		currentUrl := *url
+		for true {
+			if currentUrl != *url {
+				log.Info(fmt.Sprintf("url changed %s", currentUrl))
+				currentUrl = *url
+			}
+		}
 	}
 
 }
