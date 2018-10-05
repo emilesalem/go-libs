@@ -19,27 +19,34 @@ type ServiceInfo struct {
 	URL  string
 }
 
-func watchService(serviceInfo *ServiceInfo, client *consul.Client, c chan *ServiceInfo) {
+func watchService(serviceInfo *ServiceInfo, client *consul.Client) {
 	plan, err := createServiceWatchPlan(serviceInfo)
 	if err != nil {
-		c <- nil
+		log.WithError(err).Error("error creating service watch")
+		return
 	}
-	initialValue := true
 	plan.Handler = func(someInt uint64, result interface{}) {
 		results := result.([]*consul.ServiceEntry)
-		selectNodeAddress(serviceInfo, results)
+		selectServiceEntryNodeAddress(results)
 		log.Info(fmt.Sprintf("updating service address: %s", serviceInfo.URL))
-		if initialValue {
-			c <- serviceInfo
-			close(c)
-			initialValue = false
-		}
 	}
 	err = plan.RunWithClientAndLogger(client, stdLog.New(os.Stderr, "", 1))
 	if err != nil {
-		log.WithError(err).Error("error during service watch")
-		c <- nil
+		log.WithError(err).Error("error starting service watch")
 	}
+}
+
+func fetchInitialServiceURL(serviceName string, catalog *consul.Catalog) (string, error) {
+	nodes, _, err := catalog.Service(serviceName, "", nil)
+	if err != nil {
+		log.WithError(err).Error("can't get services from catalog")
+		return "", err
+	}
+	if len(nodes) <= 0 {
+		log.WithField("name", serviceName).Error("service not found")
+		return "", err
+	}
+	return selectCatalogEntryNodeAddress(nodes), nil
 }
 
 func createServiceWatchPlan(serviceInfo *ServiceInfo) (*consulWatch.Plan, error) {
@@ -54,28 +61,44 @@ func createServiceWatchPlan(serviceInfo *ServiceInfo) (*consulWatch.Plan, error)
 	return plan, nil
 }
 
-func selectNodeAddress(serviceInfo *ServiceInfo, nodes []*consul.ServiceEntry) {
+func selectServiceEntryNodeAddress(nodes []*consul.ServiceEntry) string {
+	var result string = ""
 	if len(nodes) > 0 {
-		s1 := rand.NewSource(time.Now().UnixNano())
-		r1 := rand.New(s1)
+		r1 := rand.New(rand.NewSource(time.Now().UnixNano()))
 		n := nodes[r1.Intn(len(nodes))]
 		serviceAddress := n.Service.Address
 		if len(serviceAddress) == 0 {
 			serviceAddress = n.Node.Address
 		}
-		serviceInfo.URL = fmt.Sprintf("%s:%v", serviceAddress, n.Service.Port)
+		result = fmt.Sprintf("%s:%v", serviceAddress, n.Service.Port)
 	}
+	return result
 }
 
-func WatchServiceURL(serviceName string) (*string, error) {
+func selectCatalogEntryNodeAddress(nodes []*consul.CatalogService) string {
+	var result string = ""
+	if len(nodes) > 0 {
+		r := rand.New(rand.NewSource(time.Now().UnixNano()))
+		n := nodes[r.Intn(len(nodes))]
+		serviceAddress := n.ServiceAddress
+		if len(serviceAddress) == 0 {
+			serviceAddress = n.Address
+		}
+		result = fmt.Sprintf("%s:%v", serviceAddress, n.ServicePort)
+	}
+	return result
+}
+
+func WatchServiceURL(serviceName string) (*ServiceInfo, error) {
 	serviceInfo := &ServiceInfo{serviceName, ""}
 	client, err := consul.NewClient(&consul.Config{Address: ConsulAddress})
 	if err != nil {
 		log.WithError(err).Error("can't connect to consul")
 		return nil, err
 	}
-	initialValueChan := make(chan *ServiceInfo)
-	go watchService(serviceInfo, client, initialValueChan)
-	serviceInfo = <-initialValueChan
-	return &serviceInfo.URL, nil
+	if serviceInfo.URL, err = fetchInitialServiceURL(serviceInfo.Name, client.Catalog()); err != nil {
+		return nil, err
+	}
+	go watchService(serviceInfo, client)
+	return serviceInfo, nil
 }
