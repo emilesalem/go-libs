@@ -4,6 +4,10 @@ package consul
 
 import (
 	"fmt"
+	stdLog "log"
+	"math/rand"
+	"os"
+	"time"
 
 	"github.com/apex/log"
 	consul "github.com/hashicorp/consul/api"
@@ -15,21 +19,27 @@ type ServiceInfo struct {
 	URL  string
 }
 
-func watchService(serviceInfo *ServiceInfo, client *consul.Client) error {
+func watchService(serviceInfo *ServiceInfo, client *consul.Client, c chan *ServiceInfo) {
 	plan, err := createServiceWatchPlan(serviceInfo)
 	if err != nil {
-		return err
+		c <- nil
 	}
+	initialValue := true
 	plan.Handler = func(someInt uint64, result interface{}) {
-		var results []*consul.ServiceEntry = result.([]*consul.ServiceEntry)
+		results := result.([]*consul.ServiceEntry)
 		selectNodeAddress(serviceInfo, results)
+		log.Info(fmt.Sprintf("updating service address: %s", serviceInfo.URL))
+		if initialValue {
+			c <- serviceInfo
+			close(c)
+			initialValue = false
+		}
 	}
-	err = plan.RunWithClientAndLogger(client, nil)
+	err = plan.RunWithClientAndLogger(client, stdLog.New(os.Stderr, "", 1))
 	if err != nil {
 		log.WithError(err).Error("error during service watch")
-		return err
+		c <- nil
 	}
-	return nil
 }
 
 func createServiceWatchPlan(serviceInfo *ServiceInfo) (*consulWatch.Plan, error) {
@@ -45,20 +55,15 @@ func createServiceWatchPlan(serviceInfo *ServiceInfo) (*consulWatch.Plan, error)
 }
 
 func selectNodeAddress(serviceInfo *ServiceInfo, nodes []*consul.ServiceEntry) {
-	for _, n := range nodes {
+	if len(nodes) > 0 {
+		s1 := rand.NewSource(time.Now().UnixNano())
+		r1 := rand.New(s1)
+		n := nodes[r1.Intn(len(nodes))]
 		serviceAddress := n.Service.Address
 		if len(serviceAddress) == 0 {
 			serviceAddress = n.Node.Address
 		}
-		serviceAddress = fmt.Sprintf("%s:%v", serviceAddress, n.Service.Port)
-		if serviceAddress != serviceInfo.URL {
-			log.WithFields(log.Fields{
-				"name": serviceInfo.Name,
-				"url":  serviceAddress,
-			}).Info("updating node")
-			serviceInfo.URL = serviceAddress
-			return
-		}
+		serviceInfo.URL = fmt.Sprintf("%s:%v", serviceAddress, n.Service.Port)
 	}
 }
 
@@ -69,9 +74,8 @@ func WatchServiceURL(serviceName string) (*string, error) {
 		log.WithError(err).Error("can't connect to consul")
 		return nil, err
 	}
-	err = watchService(serviceInfo, client)
-	if err != nil {
-		return nil, err
-	}
+	initialValueChan := make(chan *ServiceInfo)
+	go watchService(serviceInfo, client, initialValueChan)
+	serviceInfo = <-initialValueChan
 	return &serviceInfo.URL, nil
 }
