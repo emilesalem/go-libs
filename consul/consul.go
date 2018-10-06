@@ -2,10 +2,12 @@
 package consul
 
 import (
+	"errors"
 	"fmt"
 	stdLog "log"
 	"math/rand"
 	"os"
+	"strconv"
 	"time"
 
 	"github.com/apex/log"
@@ -13,39 +15,71 @@ import (
 	consulwatch "github.com/hashicorp/consul/watch"
 )
 
-//ServiceInfo holds the name and the URL of a service
+//ServiceInfo values hold the name and the URL of a service
 type ServiceInfo struct {
 	Name string
 	URL  string
 }
 
-//WatchServiceURL returns a pointer to a ServiceInfo holding the current URL of the service
-//this URL value will get updated as the service nodes change
-func WatchServiceURL(serviceName string) (*ServiceInfo, error) {
-	serviceInfo := &ServiceInfo{serviceName, ""}
-	client, err := consulapi.NewClient(&consulapi.Config{Address: ConsulAddress})
+var maxTime time.Duration
+
+var consulClient *consulapi.Client
+
+func init() {
+	var err error
+	consulClient, err = consulapi.NewClient(&consulapi.Config{Address: ConsulAddress})
 	if err != nil {
-		log.WithError(err).Error("can't connect to consul")
-		return nil, err
+		log.WithError(err).Error("cannot create consul client - panicking")
+		panic(err)
 	}
-	if serviceInfo.URL, err = fetchCurrentServiceURL(serviceInfo.Name, *client); err != nil {
-		return nil, err
-	}
-	go watchService(serviceInfo, *client)
-	return serviceInfo, nil
+	v, _ := strconv.ParseInt(InitialValueTimeout, 10, 0)
+	maxTime = time.Duration(v)
+	log.Info("consul client created")
 }
 
-func fetchCurrentServiceURL(serviceName string, client consulapi.Client) (string, error) {
-	nodes, _, err := client.Health().Service(serviceName, "", true, &consulapi.QueryOptions{AllowStale: false})
+// WatchService takes a service name and returns a pointer to a ServiceInfo holding the current URL of the service
+// the URL value will get updated as the service nodes change
+// the function will block until either of the following events occur:
+// - the INITIAL_VALUE_TIMEOUT_SECONDS duration is elapsed
+// - the service URL was resolved by consul
+// if the INITIAL_VALUE_TIMEOUT_SECONDS duration is elapsed, an error is returned
+func WatchService(serviceName string) (*ServiceInfo, error) {
+	var err error
+	chCurrentValue := make(chan *ServiceInfo)
+	chStop := make(chan bool)
+	startWatch(serviceName, chCurrentValue, chStop)
+	select {
+	case serviceInfo := <-chCurrentValue:
+		return serviceInfo, nil
+	case <-time.After(maxTime * time.Second):
+		msg := "consul watch timed out"
+		log.Error(msg)
+		err = errors.New(msg)
+		chStop <- true
+		close(chStop)
+		return nil, err
+	}
+}
+
+func startWatch(serviceName string, c chan *ServiceInfo, chStop chan bool) {
+	plan, err := createServiceWatchPlan(serviceName)
 	if err != nil {
-		log.WithError(err).Error("can't get services from consul")
-		return "", err
+		log.WithError(err).Error("error creating service watch plan - panicking")
+		panic(err)
 	}
-	if len(nodes) <= 0 {
-		log.WithField("name", serviceName).Error(fmt.Sprintf("%s service not found", serviceName))
-		return "", err
+	serviceInfo := &ServiceInfo{serviceName, ""}
+	var f bool
+	plan.Handler = func(i uint64, result interface{}) {
+		serviceInfo.URL = selectServiceEntryAddress(result.([]*consulapi.ServiceEntry))
+		log.Info(fmt.Sprintf("updating %s service, new URL: %s", serviceInfo.Name, serviceInfo.URL))
+		if !f {
+			c <- serviceInfo
+			close(c)
+			f = !f
+		}
 	}
-	return selectServiceEntryAddress(nodes), nil
+	go plan.RunWithClientAndLogger(consulClient, stdLog.New(os.Stderr, "", 1))
+	go waitForStopSignal(plan, chStop)
 }
 
 func selectServiceEntryAddress(nodes []*consulapi.ServiceEntry) string {
@@ -62,20 +96,10 @@ func selectServiceEntryAddress(nodes []*consulapi.ServiceEntry) string {
 	return result
 }
 
-func watchService(serviceInfo *ServiceInfo, client consulapi.Client) {
-	plan, err := createServiceWatchPlan(serviceInfo.Name)
-	if err != nil {
-		log.WithError(err).Error("error creating service watch plan")
-		return
-	}
-	plan.Handler = func(someInt uint64, result interface{}) {
-		serviceInfo.URL = selectServiceEntryAddress(result.([]*consulapi.ServiceEntry))
-		log.Info(fmt.Sprintf("updating %s service, new URL: %s", serviceInfo.Name, serviceInfo.URL))
-	}
-	err = plan.RunWithClientAndLogger(&client, stdLog.New(os.Stderr, "", 1))
-	if err != nil {
-		log.WithError(err).Error("error starting service watch")
-	}
+func waitForStopSignal(plan *consulwatch.Plan, chStop chan bool) {
+	<-chStop
+	log.Info("stoping plan")
+	plan.Stop()
 }
 
 func createServiceWatchPlan(serviceName string) (*consulwatch.Plan, error) {

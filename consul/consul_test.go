@@ -8,20 +8,37 @@ import (
 )
 
 func TestWatchServiceTest(t *testing.T) {
-	if url, err := WatchServiceURL("api-core"); err != nil {
-		new(testing.T).Error(
+	urlUGC, err := WatchServiceURL("api-ugc")
+	if err != nil {
+		t.Error(
 			"For", "watch service test",
-			"expected", "something",
-			"got", "nothing",
+			"expected", "service info",
+			"got", "error",
 		)
-	} else {
-		currentURL := *url
-		log.Info(fmt.Sprintf("Initial URL value: %s", currentURL))
-		for true {
-			if currentURL != *url {
-				currentURL = *url
-				log.Info(fmt.Sprintf("url changed %s", currentURL))
-			}
+		t.FailNow()
+	}
+	urlSSO, err := WatchServiceURL("api-authentication-sso")
+	if err != nil {
+		t.Error(
+			"For", "watch service test",
+			"expected", "service info",
+			"got", "error",
+		)
+		t.FailNow()
+	}
+
+	currentURLUGC := *urlUGC
+	log.Info(fmt.Sprintf("Initial ugc URL value: %s", currentURLUGC.URL))
+	currentURLSSO := *urlSSO
+	log.Info(fmt.Sprintf("Initial sso URL value: %s", currentURLSSO.URL))
+	for true {
+		if currentURLUGC.URL != urlUGC.URL {
+			currentURLUGC = *urlUGC
+			log.Info(fmt.Sprintf("ugc url changed %s", currentURLUGC.URL))
+		}
+		if currentURLSSO.URL != urlSSO.URL {
+			currentURLSSO = *urlSSO
+			log.Info(fmt.Sprintf("ugc sso changed %s", currentURLSSO.URL))
 		}
 	}
 
