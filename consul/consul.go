@@ -69,7 +69,7 @@ func watchService(serviceInfo *ServiceInfo, client consulapi.Client) {
 		return
 	}
 	plan.Handler = func(someInt uint64, result interface{}) {
-		serviceInfo.URL = selectServiceEntryAddress(result.([]*consulApi.ServiceEntry))
+		serviceInfo.URL = selectServiceEntryAddress(result.([]*consulapi.ServiceEntry))
 		log.Info(fmt.Sprintf("updating %s service, new URL: %s", serviceInfo.Name, serviceInfo.URL))
 	}
 	err = plan.RunWithClientAndLogger(&client, stdLog.New(os.Stderr, "", 1))
