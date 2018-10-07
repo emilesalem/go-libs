@@ -1,4 +1,6 @@
-// Package consul provides the means to get the changing value of a service URL
+// Package consul provides the means to get the changing value of a service URL.
+// If running in development environment, we register the service
+// using SERVICE_NAME and SERVICE_PORT envars and localhost address.
 package consul
 
 import (
@@ -11,7 +13,7 @@ import (
 	"time"
 
 	"github.com/apex/log"
-
+	"github.com/emilesalem/go-libs/env"
 	consulapi "github.com/hashicorp/consul/api"
 	consulwatch "github.com/hashicorp/consul/watch"
 )
@@ -35,6 +37,9 @@ func init() {
 	v, _ := strconv.ParseInt(os.Getenv("INITIAL_VALUE_TIMEOUT_SECONDS"), 10, 0)
 	maxTime = time.Duration(v)
 	log.Info("consul client created")
+	if environment := env.GetSoft("ENVIRONMENT"); environment == "development" {
+		RegisterLocalService()
+	}
 }
 
 // WatchService takes a service name and returns a pointer to a ServiceInfo holding the

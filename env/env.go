@@ -2,18 +2,27 @@
 package env
 
 import (
-	"errors"
 	"fmt"
 	"os"
 
+	//load values from .env file
 	_ "github.com/joho/godotenv/autoload"
 )
 
-//Get takes an envar name and return its value, panic if value doesnt exit
+//Get takes an envar name and return its value, panic if value doesnt exit (fail fast)
 func Get(envar string) string {
 	if v, ok := os.LookupEnv(envar); ok {
 		return v
 	} else {
-		panic(errors.New(fmt.Sprintf("envar %s not set", envar)))
+		panic(fmt.Errorf("envar %s not set", envar))
 	}
+}
+
+//GetSoft takes an envar name and return its value if its set
+func GetSoft(envar string) string {
+	result := ""
+	if v, ok := os.LookupEnv(envar); ok {
+		result = v
+	}
+	return result
 }
