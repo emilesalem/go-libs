@@ -11,6 +11,7 @@ import (
 	"time"
 
 	"github.com/apex/log"
+
 	consulapi "github.com/hashicorp/consul/api"
 	consulwatch "github.com/hashicorp/consul/watch"
 )
@@ -22,29 +23,28 @@ type ServiceInfo struct {
 }
 
 var maxTime time.Duration
-
 var consulClient *consulapi.Client
 
 func init() {
 	var err error
-	consulClient, err = consulapi.NewClient(&consulapi.Config{Address: ConsulAddress})
+	consulClient, err = consulapi.NewClient(&consulapi.Config{Address: os.Getenv("CONSUL_HOST")})
 	if err != nil {
 		log.WithError(err).Error("cannot create consul client - panicking")
 		panic(err)
 	}
-	v, _ := strconv.ParseInt(InitialValueTimeout, 10, 0)
+	v, _ := strconv.ParseInt(os.Getenv("INITIAL_VALUE_TIMEOUT_SECONDS"), 10, 0)
 	maxTime = time.Duration(v)
 	log.Info("consul client created")
 }
 
-// WatchService takes a service name and returns a pointer to a ServiceInfo holding the current URL of the service
-// the URL value will get updated as the service nodes change
+// WatchService takes a service name and returns a pointer to a ServiceInfo holding the
+// current URL of a healthy node (randomly chosen) of the service.
+// The URL value will get updated as the service nodes change;
 // the function will block until either of the following events occur:
 // - the INITIAL_VALUE_TIMEOUT_SECONDS duration is elapsed
 // - the service URL was resolved by consul
 // if the INITIAL_VALUE_TIMEOUT_SECONDS duration is elapsed, an error is returned
 func WatchService(serviceName string) (*ServiceInfo, error) {
-	var err error
 	chCurrentValue := make(chan *ServiceInfo)
 	chStop := make(chan bool)
 	startWatch(serviceName, chCurrentValue, chStop)
@@ -54,10 +54,9 @@ func WatchService(serviceName string) (*ServiceInfo, error) {
 	case <-time.After(maxTime * time.Second):
 		msg := "consul watch timed out"
 		log.Error(msg)
-		err = errors.New(msg)
 		chStop <- true
 		close(chStop)
-		return nil, err
+		return nil, errors.New(msg)
 	}
 }
 
@@ -98,7 +97,7 @@ func selectServiceEntryAddress(nodes []*consulapi.ServiceEntry) string {
 
 func waitForStopSignal(plan *consulwatch.Plan, chStop chan bool) {
 	<-chStop
-	log.Info("stoping plan")
+	log.Info("stopping plan")
 	plan.Stop()
 }
 
