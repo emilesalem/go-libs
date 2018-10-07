@@ -31,3 +31,12 @@ func TestWatchServiceTest(t *testing.T) {
 		}
 	}
 }
+
+func TestRegisterServiceTest(t *testing.T) {
+	name := "bogus_service"
+	address := "127.0.0.1"
+	port := 12345
+	if err := RegisterService(name, address, port); err != nil {
+		t.FailNow()
+	}
+}

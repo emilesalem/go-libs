@@ -69,12 +69,14 @@ func startWatch(serviceName string, c chan *ServiceInfo, chStop chan bool) {
 	serviceInfo := &ServiceInfo{serviceName, ""}
 	var f bool
 	plan.Handler = func(i uint64, result interface{}) {
-		serviceInfo.URL = selectServiceEntryAddress(result.([]*consulapi.ServiceEntry))
-		log.Info(fmt.Sprintf("updating %s service, new URL: %s", serviceInfo.Name, serviceInfo.URL))
-		if !f {
-			c <- serviceInfo
-			close(c)
-			f = !f
+		if selectedNode := selectServiceEntryAddress(result.([]*consulapi.ServiceEntry)); len(selectedNode) > 0 {
+			serviceInfo.URL = selectedNode
+			log.Info(fmt.Sprintf("updating %s service, new URL: %s", serviceInfo.Name, serviceInfo.URL))
+			if !f {
+				c <- serviceInfo
+				close(c)
+				f = !f
+			}
 		}
 	}
 	go plan.RunWithClientAndLogger(consulClient, stdLog.New(os.Stderr, "", 1))
