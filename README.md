@@ -12,7 +12,6 @@ The envars read from .env will not override existing envar values.
 The Env package is destined for development environment only.    
 .env file is loaded automatically when package env is initialized  
 To set, load and read environment variables in a service running locally:  
-- import the env package (use env.Get function to read values)
 - have a .env file located in project root directory.  
 Add environment-specific variables on new lines in the form of NAME=VALUE.  
 ex:
@@ -20,6 +19,8 @@ ex:
         DB_HOST=localhost  
         DB_USER=root  
         DB_PASS=s1mpl3
+- import the env package (use env.Get function to read values)
+
 .env file should not be committed.
 
 2 methods can be used to read envars:
