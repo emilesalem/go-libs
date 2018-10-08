@@ -46,8 +46,8 @@ func initConsulClient() {
 }
 
 func initMaxTime() {
-	if v, err := strconv.Atoi(env.Get("INITIAL_VALUE_TIMEOUT_SECONDS")); err != nil {
-		log.WithError(err).Fatal("INITIAL_VALUE_TIMEOUT_SECONDS cannot be parsed to int")
+	if v, err := strconv.Atoi(env.Get("INITIAL_WATCH_TIMEOUT_SECONDS")); err != nil {
+		log.WithError(err).Fatal("INITIAL_WATCH_TIMEOUT_SECONDS cannot be parsed to int")
 		panic(err)
 	} else {
 		maxTime = time.Duration(v)

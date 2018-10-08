@@ -34,7 +34,7 @@ Also enables automatic service registration in dev environment.
 - **consul.WatchService** accepts a service name and returns a ServiceInfo pointer holding the current URL of a random healthy service node.
 The URL value will get updated as the service nodes change;
 the function will block until either of the following events occur:
-    * watch timeout is elapsed (INITIAL_VALUE_TIMEOUT_SECONDS)
+    * watch timeout is elapsed (INITIAL_WATCH_TIMEOUT_SECONDS)
     * service URL is resolved by consul 
     
     if the timeout is elapsed an error is returned
@@ -43,7 +43,7 @@ the function will block until either of the following events occur:
 | envar | description | | good default |
 | :-|-: | -| -:|
 | CONSUL_HOST | the address and port of the consul service | required | 127.0.0.1:8500
-|INITIAL_VALUE_TIMEOUT_SECONDS|timeout in seconds for service url watch request| required | 10 
+|INITIAL_WATCH_TIMEOUT_SECONDS|timeout in seconds for service url watch request| required | 10 
 | SERVICE_NAME | service will be registered under that name | required in dev environment| -
 | SERVICE_PORT | service will be registered with that port | required in dev environment | -
 | ENVIRONMENT | run environment, possible values: 'dev', 'prod' | optional | dev
