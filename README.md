@@ -49,5 +49,5 @@ the function will block until either of the following events occur:
 |INITIAL_VALUE_TIMEOUT_SECONDS|timeout in seconds for service url watch request| required |
 | SERVICE_NAME | service will be registered under that name | required in dev environment|
 | SERVICE_PORT | service will be registered with that port | required in dev environment |
-| ENVIRONMENT | running environment, possible values: 'dev', 'prod' | optional |
+| ENVIRONMENT | run environment, possible values: 'dev', 'prod' | optional |
 
