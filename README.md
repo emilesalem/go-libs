@@ -5,7 +5,7 @@
 
 #
 ## Env
-Package env enables loading and reading environment variables defined in .env file (located in project root).  
+Package env enables loading and reading environment variables defined in a .env file (located in project root).  
 The envars read from .env will not override existing envar values.  
 
 #### Usage  
