@@ -5,34 +5,39 @@
 
 #
 ## Env
-Package env loads environment variables defined in .env file (located in project root) and provides the means to get their value
-#### Usage
-to load and read environment variables in a service running locally, a developper only has to do 2 things:  
+Package env enables loading and reading environment variables defined in .env file (located in project root).  
+The envars read from .env will not override existing envar values.  
+
+#### Usage  
+The Env package is destined for development environment only.    
+.env file is loaded automatically when package env is initialized  
+To load and read environment variables in a service running locally:  
 - import the env package (use env.Get function to read values)
-- have a .env file located in project root directory (.env file is loaded automatically when package env is initialize). Add environment-specific variables on new lines in the form of NAME=VALUE.  
-For example:
+- have a .env file located in project root directory.  
+Add environment-specific variables on new lines in the form of NAME=VALUE.  
+ex:
 
         DB_HOST=localhost  
         DB_USER=root  
         DB_PASS=s1mpl3
+.env file should not be committed.
 
 2 methods can be used to read envars:
-- **env.Get**: this is the privileged way of reading a required envar. If the envar is not set, the service will panic. This behaviour lets us attain a fail fast strategy for misconfigured services.  
+- **env.Get**: this is the privileged way of reading a required envar. If the envar is not set, the service will panic; this behaviour implements a fail fast strategy for misconfigured services.  
 - **env.GetOpt**: this function can be used to read an optional envar that may not be set in another environment. (ex: an envar is only set to detect the development environment to register a service locally)
 
 #
 ## Consul
 Package consul provides the means to get the changing value of a service URL.  
-If 'development' environment is detected the service is registered with SERVICE_NAME and SERVICE_PORT envars on 127.0.0.1.
 
 #### Usage
 Consul package is used to watch a service's changing URL with the consul.WatchService function.  
-If the ENVIRONMENT envar is set to 'dev', the service will be automatically registered as running on 127.0.0.1 using the SERVICE_NAME and SERVICE_PORT envar values.
+If ENVIRONMENT is set to 'dev', the service will be automatically registered as running on 127.0.0.1 using the SERVICE_NAME and SERVICE_PORT.
 - **consul.WatchService** accepts a service name and returns a ServiceInfo pointer holding the current URL of a random healthy service node.
 The URL value will get updated as the service nodes change;
 the function will block until either of the following events occur:
-    * the watch service timeout is elapsed (INITIAL_VALUE_TIMEOUT_SECONDS)
-    * the service URL was resolved by consul 
+    * watch timeout is elapsed (INITIAL_VALUE_TIMEOUT_SECONDS)
+    * service URL is resolved by consul 
     
     if the timeout is elapsed an error is returned
 
