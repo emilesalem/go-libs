@@ -17,22 +17,20 @@ ex:
         DB_PASS=s1mpl3
  
 
-2 methods can be used to read envars:
-- **env.Get**: this is the privileged way of reading a required envar. If the envar is not set, the service will panic; this behaviour implements a fail fast strategy for misconfigured services.  
-- **env.GetOpt**: this function can be used to read an optional envar that may not be set in another environment. (ex: an envar is only set to detect the development environment to register a service locally)  
+- 2 methods can be used to read envars:
+    * **env.Get**: this is the privileged way of reading a required envar. If the envar is not set, the service will panic; this behaviour implements a fail fast strategy for misconfigured services.  
+    * **env.GetOpt**: this function can be used to read an optional envar that may not be set in another environment. (ex: an envar is only set to detect the development environment to register a service locally)  
 
-.env file should not be committed   
-.env file must be located in project root  
-.env values will be loaded on package initialization  
-.env values will not override existing envar values.
+- .env file should not be committed   
+- .env values will be loaded on package initialization  
+- .env values will not override existing envar values.
 
 #
 ## Consul
-Package consul provides the means to get the changing value of a service URL. Also enables automatic service registration in dev environment.
+Package consul provides the means to get the changing value of a service URL.  
+Also enables automatic service registration in dev environment.
 
 #### Usage
-Watch a service's changing URL with the consul.WatchService function.  
-If ENVIRONMENT is set to 'dev', the running service will be registered at package initialization on address 127.0.0.1 with SERVICE_NAME and SERVICE_PORT.
 - **consul.WatchService** accepts a service name and returns a ServiceInfo pointer holding the current URL of a random healthy service node.
 The URL value will get updated as the service nodes change;
 the function will block until either of the following events occur:
@@ -40,8 +38,7 @@ the function will block until either of the following events occur:
     * service URL is resolved by consul 
     
     if the timeout is elapsed an error is returned
-
-
+- **service registration**  set ENVIRONMENT to 'dev' to enable registration at package initialization on address 127.0.0.1 with SERVICE_NAME and SERVICE_PORT.
 
 | envar | description | | good default |
 | :-|-: | -| -:|
