@@ -1,0 +1,19 @@
+
+image: golang:1.11
+pipelines:
+  default:
+    - step:
+        services: 
+          - consul
+        name: test consul
+        script:
+          - cd ./consul
+          - go get -v 
+          - go test
+definitions:
+  services:
+    consul:
+      image: consul:1.0.3
+          
+options:
+  docker: true

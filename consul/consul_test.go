@@ -4,8 +4,6 @@ import (
 	"os"
 	"testing"
 	"time"
-
-	_ "github.com/joho/godotenv/autoload"
 )
 
 func TestConsul(t *testing.T) {
@@ -24,14 +22,11 @@ func TestConsul(t *testing.T) {
 	})
 	t.Run("Watch service test", func(t *testing.T) {
 		serviceInfo, err := WatchService(serviceName)
-		if err != nil {
-			t.Error(
-				"For", "watch service test",
-				"expected", "service info",
-				"got", "error",
-			)
+		if err != nil || serviceInfo == nil {
+			t.FailNow()
 		}
-		if serviceInfo == nil {
+
+		if serviceInfo.URL != "127.0.0.1:12345" {
 			t.FailNow()
 		}
 
