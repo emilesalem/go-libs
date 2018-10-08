@@ -11,7 +11,7 @@ The envars read from .env will not override existing envar values.
 #### Usage  
 The Env package is destined for development environment only.    
 .env file is loaded automatically when package env is initialized  
-To load and read environment variables in a service running locally:  
+To set, load and read environment variables in a service running locally:  
 - import the env package (use env.Get function to read values)
 - have a .env file located in project root directory.  
 Add environment-specific variables on new lines in the form of NAME=VALUE.  
