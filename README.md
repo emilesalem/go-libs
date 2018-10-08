@@ -7,9 +7,8 @@
 ## Env
 Package env enables reading environment variables which can be defined in a .env file.   
 
-#### Usage  
-- env.Get function to read values     
-- (Development only) have a .env file located in project root directory.  
+#### Usage      
+- have a .env file located in project root directory.  
 Add environment-specific variables on new lines in the form of NAME=VALUE.  
 ex:
 
