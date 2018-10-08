@@ -33,7 +33,7 @@ Package consul provides the means to get the changing value of a service URL. Al
 
 #### Usage
 Watch a service's changing URL with the consul.WatchService function.  
-If ENVIRONMENT is set to 'dev', the service will be registered at package initialization on address 127.0.0.1 with SERVICE_NAME and SERVICE_PORT.
+If ENVIRONMENT is set to 'dev', the running service will be registered at package initialization on address 127.0.0.1 with SERVICE_NAME and SERVICE_PORT.
 - **consul.WatchService** accepts a service name and returns a ServiceInfo pointer holding the current URL of a random healthy service node.
 The URL value will get updated as the service nodes change;
 the function will block until either of the following events occur:
