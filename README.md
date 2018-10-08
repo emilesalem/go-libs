@@ -5,8 +5,7 @@
 
 #
 ## Env
-Package env enables loading and reading environment variables defined in a .env file (located in project root).  
-The envars read from .env will not override existing envar values.  
+Package env enables reading environment variables which can be defined in a .env file.   
 
 #### Usage  
 - env.Get function to read values     
@@ -17,13 +16,16 @@ ex:
         DB_HOST=localhost  
         DB_USER=root  
         DB_PASS=s1mpl3
-
-
-.env file should not be committed.
+ 
 
 2 methods can be used to read envars:
 - **env.Get**: this is the privileged way of reading a required envar. If the envar is not set, the service will panic; this behaviour implements a fail fast strategy for misconfigured services.  
-- **env.GetOpt**: this function can be used to read an optional envar that may not be set in another environment. (ex: an envar is only set to detect the development environment to register a service locally)
+- **env.GetOpt**: this function can be used to read an optional envar that may not be set in another environment. (ex: an envar is only set to detect the development environment to register a service locally)  
+
+.env file should not be committed   
+.env file must be located in project root  
+.env values will be loaded on package initialization  
+.env values will not override existing envar values.
 
 #
 ## Consul
