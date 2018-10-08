@@ -1,39 +1,55 @@
 package consul
 
 import (
-	"fmt"
+	"os"
 	"testing"
 	"time"
 
-	"github.com/apex/log"
 	_ "github.com/joho/godotenv/autoload"
 )
 
-func TestWatchServiceTest(t *testing.T) {
-	ugcInfo, err := WatchService("api-ugc")
-	if err != nil {
-		t.Error(
-			"For", "watch service test",
-			"expected", "service info",
-			"got", "error",
-		)
-	}
-	if ugcInfo == nil {
-		t.FailNow()
-	}
+func TestConsul(t *testing.T) {
+	serviceName := "test"
+	servicePort := "12345"
+	os.Setenv("SERVICE_NAME", serviceName)
+	os.Setenv("SERVICE_PORT", servicePort)
 
-	currentURLUGC := *ugcInfo
-	log.Info(fmt.Sprintf("Initial ugc URL value: %s", currentURLUGC.URL))
-	for range time.NewTicker(2 * time.Second).C {
-		if currentURLUGC.URL != ugcInfo.URL {
-			currentURLUGC = *ugcInfo
-			log.Info(fmt.Sprintf("ugc url changed %s", currentURLUGC.URL))
+	t.Run("Register service test", func(t *testing.T) {
+		if err := RegisterLocalService(); err != nil {
+			t.FailNow()
 		}
-	}
-}
+		if nodes, _, err := consulClient.Catalog().Service(serviceName, "", nil); err != nil || len(nodes) == 0 {
+			t.Fail()
+		}
+	})
+	t.Run("Watch service test", func(t *testing.T) {
+		serviceInfo, err := WatchService(serviceName)
+		if err != nil {
+			t.Error(
+				"For", "watch service test",
+				"expected", "service info",
+				"got", "error",
+			)
+		}
+		if serviceInfo == nil {
+			t.FailNow()
+		}
 
-func TestRegisterServiceTest(t *testing.T) {
-	if err := RegisterLocalService(); err != nil {
-		t.FailNow()
-	}
+		previousInfo := *serviceInfo
+		os.Setenv("SERVICE_PORT", "54321")
+		if err := RegisterLocalService(); err != nil {
+			t.FailNow()
+		}
+		if nodes, _, err := consulClient.Catalog().Service(serviceName, "", nil); err != nil || len(nodes) != 1 {
+			t.Fail()
+		}
+		<-time.NewTimer(1 * time.Second).C
+		if serviceInfo.URL == previousInfo.URL {
+			t.Error(
+				"For", "updated service",
+				"expected", "127.0.0.1:54321",
+				"got", serviceInfo.URL,
+			)
+		}
+	})
 }

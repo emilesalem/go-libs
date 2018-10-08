@@ -1,5 +1,5 @@
 // Package consul provides the means to get the changing value of a service URL.
-// If running in development environment, we register the service
+// If we detect 'development' environment we register the service
 // using SERVICE_NAME and SERVICE_PORT envars and localhost address.
 package consul
 
@@ -28,27 +28,39 @@ var maxTime time.Duration
 var consulClient *consulapi.Client
 
 func init() {
-	var err error
-	consulClient, err = consulapi.NewClient(&consulapi.Config{Address: os.Getenv("CONSUL_HOST")})
-	if err != nil {
-		log.WithError(err).Error("cannot create consul client - panicking")
-		panic(err)
-	}
-	v, _ := strconv.ParseInt(os.Getenv("INITIAL_VALUE_TIMEOUT_SECONDS"), 10, 0)
-	maxTime = time.Duration(v)
-	log.Info("consul client created")
-	if environment := env.GetSoft("ENVIRONMENT"); environment == "development" {
+	initConsulClient()
+	initMaxTime()
+	if env.GetOpt("ENVIRONMENT") == "dev" {
 		RegisterLocalService()
 	}
 }
 
-// WatchService takes a service name and returns a pointer to a ServiceInfo holding the
-// current URL of a healthy node (randomly chosen) of the service.
+func initConsulClient() {
+	if c, err := consulapi.NewClient(&consulapi.Config{Address: env.Get("CONSUL_HOST")}); err != nil {
+		log.WithError(err).Fatal("cannot create consul client")
+		panic(err)
+	} else {
+		consulClient = c
+		log.Info("consul client created")
+	}
+}
+
+func initMaxTime() {
+	if v, err := strconv.Atoi(env.Get("INITIAL_VALUE_TIMEOUT_SECONDS")); err != nil {
+		log.WithError(err).Fatal("INITIAL_VALUE_TIMEOUT_SECONDS cannot be parsed to int")
+		panic(err)
+	} else {
+		maxTime = time.Duration(v)
+	}
+}
+
+// WatchService accepts a service name and returns a ServiceInfo pointer holding the
+// current URL of a random healthy service node.
 // The URL value will get updated as the service nodes change;
 // the function will block until either of the following events occur:
-// - the INITIAL_VALUE_TIMEOUT_SECONDS duration is elapsed
+// - the maxTime duration is elapsed
 // - the service URL was resolved by consul
-// if the INITIAL_VALUE_TIMEOUT_SECONDS duration is elapsed, an error is returned
+// if the maxTime duration is elapsed an error is returned
 func WatchService(serviceName string) (*ServiceInfo, error) {
 	chCurrentValue := make(chan *ServiceInfo)
 	chStop := make(chan bool)
@@ -68,7 +80,7 @@ func WatchService(serviceName string) (*ServiceInfo, error) {
 func startWatch(serviceName string, c chan *ServiceInfo, chStop chan bool) {
 	plan, err := createServiceWatchPlan(serviceName)
 	if err != nil {
-		log.WithError(err).Error("error creating service watch plan - panicking")
+		log.WithError(err).Fatal("error creating service watch plan")
 		panic(err)
 	}
 	serviceInfo := &ServiceInfo{serviceName, ""}
@@ -76,7 +88,7 @@ func startWatch(serviceName string, c chan *ServiceInfo, chStop chan bool) {
 	plan.Handler = func(i uint64, result interface{}) {
 		if selectedNode := selectServiceEntryAddress(result.([]*consulapi.ServiceEntry)); len(selectedNode) > 0 {
 			serviceInfo.URL = selectedNode
-			log.Info(fmt.Sprintf("updating %s service, new URL: %s", serviceInfo.Name, serviceInfo.URL))
+			log.Infof("updating %s service, new URL: %s", serviceInfo.Name, serviceInfo.URL)
 			if !f {
 				c <- serviceInfo
 				close(c)
@@ -104,7 +116,7 @@ func selectServiceEntryAddress(nodes []*consulapi.ServiceEntry) string {
 
 func waitForStopSignal(plan *consulwatch.Plan, chStop chan bool) {
 	<-chStop
-	log.Info("stopping plan")
+	log.Info("stopping watch plan")
 	plan.Stop()
 }
 

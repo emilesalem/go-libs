@@ -9,7 +9,8 @@ import (
 	_ "github.com/joho/godotenv/autoload"
 )
 
-//Get takes an envar name and return its value, panic if value doesnt exit (fail fast)
+//Get takes an envar name and return its value, panic if value doesnt exit (fail fast);
+//should be used for required environment variables
 func Get(envar string) string {
 	if v, ok := os.LookupEnv(envar); ok {
 		return v
@@ -18,8 +19,9 @@ func Get(envar string) string {
 	}
 }
 
-//GetSoft takes an envar name and return its value if its set
-func GetSoft(envar string) string {
+//GetOpt takes an envar name and return its value if its set;
+//can be used for optional envars
+func GetOpt(envar string) string {
 	result := ""
 	if v, ok := os.LookupEnv(envar); ok {
 		result = v
