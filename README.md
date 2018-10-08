@@ -29,11 +29,11 @@ ex:
 
 #
 ## Consul
-Package consul provides the means to get the changing value of a service URL.  
+Package consul provides the means to get the changing value of a service URL. Also enables automatic service registration in dev environment.
 
 #### Usage
 Watch a service's changing URL with the consul.WatchService function.  
-If ENVIRONMENT is set to 'dev', the service will be automatically registered as running on 127.0.0.1 using the SERVICE_NAME and SERVICE_PORT.
+If ENVIRONMENT is set to 'dev', the service will be registered at package initialization on address 127.0.0.1 with SERVICE_NAME and SERVICE_PORT.
 - **consul.WatchService** accepts a service name and returns a ServiceInfo pointer holding the current URL of a random healthy service node.
 The URL value will get updated as the service nodes change;
 the function will block until either of the following events occur:
@@ -44,11 +44,11 @@ the function will block until either of the following events occur:
 
 
 
-| envar | description | |
-| -|-: | -|
-| CONSUL_HOST | the address and port of the consul service | required
-|INITIAL_VALUE_TIMEOUT_SECONDS|timeout in seconds for service url watch request| required |
-| SERVICE_NAME | service will be registered under that name | required in dev environment|
-| SERVICE_PORT | service will be registered with that port | required in dev environment |
-| ENVIRONMENT | run environment, possible values: 'dev', 'prod' | optional |
+| envar | description | | good default |
+| -|-: | -| -:|
+| CONSUL_HOST | the address and port of the consul service | required | 127.0.0.1:8500
+|INITIAL_VALUE_TIMEOUT_SECONDS|timeout in seconds for service url watch request| required | 10 
+| SERVICE_NAME | service will be registered under that name | required in dev environment| -
+| SERVICE_PORT | service will be registered with that port | required in dev environment | -
+| ENVIRONMENT | run environment, possible values: 'dev', 'prod' | optional | dev
 
