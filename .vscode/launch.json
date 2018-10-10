@@ -18,6 +18,15 @@
 			"program": "${workspaceFolder}/consul/register_test.go",
 			"env": {},
 			"args": []
+		},
+		{
+			"name": "Test health",
+			"type": "go",
+			"request": "launch",
+			"mode": "test",
+			"program": "${workspaceFolder}/health/healthcheck_test.go",
+			"env": {},
+			"args": []
 		}
 	]
 }

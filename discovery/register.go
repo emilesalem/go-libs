@@ -1,17 +1,12 @@
-package consul
+package discovery
 
 import (
-	"strconv"
-
 	"github.com/apex/log"
-	"github.com/emilesalem/go-libs/env"
 	consulapi "github.com/hashicorp/consul/api"
 )
 
-//RegisterLocalService registers a local service to Consul
-func RegisterLocalService() error {
-	port, _ := strconv.Atoi(env.Get("SERVICE_PORT"))
-	name := env.Get("SERVICE_NAME")
+//registerLocalService registers a local service to Consul
+func registerLocalService(name string, port int) error {
 	log.Infof("registering local service %s on port %v", name, port)
 	if err := consulClient.Agent().ServiceRegister(&consulapi.AgentServiceRegistration{
 		Name:    name,
