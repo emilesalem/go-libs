@@ -1,6 +1,4 @@
 // Package discovery provides the means to get the changing value of a service URL.
-// If we detect 'development' environment we register the service
-// using SERVICE_NAME and SERVICE_PORT envars and localhost address.
 package discovery
 
 import (
