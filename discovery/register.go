@@ -6,9 +6,9 @@ import (
 )
 
 //registerLocalService registers a local service to Consul
-func registerLocalService(name string, port int) error {
+func (s discoveryService) registerLocalService(name string, port int) error {
 	log.Infof("registering local service %s on port %v", name, port)
-	if err := consulClient.Agent().ServiceRegister(&consulapi.AgentServiceRegistration{
+	if err := s.consulClient.Agent().ServiceRegister(&consulapi.AgentServiceRegistration{
 		Name:    name,
 		Address: "127.0.0.1",
 		Port:    port,

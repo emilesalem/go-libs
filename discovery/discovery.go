@@ -9,6 +9,8 @@ import (
 	"time"
 
 	"github.com/apex/log"
+	consulapi "github.com/hashicorp/consul/api"
+	consulwatch "github.com/hashicorp/consul/watch"
 )
 
 //ServiceInfo values hold the name and the URL of a service
@@ -17,30 +19,39 @@ type ServiceInfo struct {
 	URL  string
 }
 
-var consulClient *consulapi.Client
+//ServiceWatcher is destined to be used to discover other services using their name
+type ServiceWatcher interface {
+	watchService(string) <-chan ServiceInfo
+}
 
-func MakeDiscoveryService(config DiscoveryConfig) {
-	if c, err := consulapi.NewClient(&consulapi.Config{Address: config.consulAddress}); err != nil {
+type discoveryService struct {
+	consulClient *consulapi.Client
+}
+
+// MakeDiscoveryService creates a new discovery service
+func MakeDiscoveryService(config Config) ServiceWatcher {
+	consulClient, err := consulapi.NewClient(&consulapi.Config{Address: config.consulAddress})
+	if err != nil {
 		log.WithError(err).Fatal("cannot create consul client")
 		panic(err)
-	} else {
-		consulClient = c
-		log.Info("consul client created")
 	}
+	log.Info("consul client created")
+	discoveryService := discoveryService{consulClient}
 	if config.localRegistration {
-		registerLocalService(config.serviceName, config.servicePort)
+		discoveryService.registerLocalService(config.serviceName, config.servicePort)
 	}
+	return discoveryService
 }
 
 // WatchService accepts a service name and returns a ServiceInfo receiving channel;
 // The ServiceInfo sent through the channel will hold the URL of a random healthy service node.
-func WatchService(serviceName string) <-chan ServiceInfo {
+func (s discoveryService) watchService(name string) <-chan ServiceInfo {
 	c := make(chan ServiceInfo)
-	startWatch(serviceName, c)
+	s.startWatch(name, c)
 	return c
 }
 
-func startWatch(serviceName string, c chan ServiceInfo) {
+func (s discoveryService) startWatch(serviceName string, c chan ServiceInfo) {
 	plan, err := createServiceWatchPlan(serviceName)
 	if err != nil {
 		log.WithError(err).Fatal("error creating service watch plan")
@@ -54,7 +65,7 @@ func startWatch(serviceName string, c chan ServiceInfo) {
 			c <- serviceInfo
 		}
 	}
-	go plan.RunWithClientAndLogger(consulClient, stdLog.New(os.Stderr, "", 1))\
+	go plan.RunWithClientAndLogger(s.consulClient, stdLog.New(os.Stderr, "", 1))
 }
 
 func selectServiceEntryAddress(nodes []*consulapi.ServiceEntry) string {
