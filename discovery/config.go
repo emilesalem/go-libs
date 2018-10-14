@@ -1,6 +1,7 @@
 package discovery
 
-type DiscoveryConfig struct {
+//Config used to configure the discovery service
+type Config struct {
 	consulAddress     string
 	localRegistration bool
 	serviceName       string

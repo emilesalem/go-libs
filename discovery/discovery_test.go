@@ -1,49 +1,52 @@
 package discovery
 
 import (
-	"os"
 	"testing"
 	"time"
 )
 
-func TestConsul(t *testing.T) {
-	serviceName := "test"
-	servicePort := "12345"
-	os.Setenv("SERVICE_NAME", serviceName)
-	os.Setenv("SERVICE_PORT", servicePort)
+func TestDiscovery(t *testing.T) {
 
+	serviceName := "test"
+	servicePort := 12345
+
+	config := Config{
+		"127.0.0.1:8500",
+		true,
+		serviceName,
+		servicePort,
+	}
+
+	w := MakeDiscoveryService(config)
+	d := w.(discoveryService)
 	t.Run("Register service test", func(t *testing.T) {
-		if err := RegisterLocalService(); err != nil {
+		if err := d.registerLocalService(serviceName, servicePort); err != nil {
 			t.FailNow()
 		}
-		if nodes, _, err := consulClient.Catalog().Service(serviceName, "", nil); err != nil || len(nodes) == 0 {
+		if nodes, _, err := d.consulClient.Catalog().Service(serviceName, "", nil); err != nil || len(nodes) == 0 {
 			t.Fail()
 		}
 	})
 	t.Run("Watch service test", func(t *testing.T) {
-		serviceInfo, err := WatchService(serviceName)
-		if err != nil || serviceInfo == nil {
+		serviceInfoC := d.watchService(serviceName)
+		if serviceInfoC == nil {
 			t.FailNow()
 		}
 
-		if serviceInfo.URL != "127.0.0.1:12345" {
+		previousInfo := <-serviceInfoC
+		if err := d.registerLocalService(serviceName, 54321); err != nil {
 			t.FailNow()
 		}
-
-		previousInfo := *serviceInfo
-		os.Setenv("SERVICE_PORT", "54321")
-		if err := RegisterLocalService(); err != nil {
-			t.FailNow()
-		}
-		if nodes, _, err := consulClient.Catalog().Service(serviceName, "", nil); err != nil || len(nodes) != 1 {
+		if nodes, _, err := d.consulClient.Catalog().Service(serviceName, "", nil); err != nil || len(nodes) != 1 {
 			t.Fail()
 		}
 		<-time.NewTimer(1 * time.Second).C
-		if serviceInfo.URL == previousInfo.URL {
+		currentInfo := <-serviceInfoC
+		if currentInfo.URL == previousInfo.URL {
 			t.Error(
 				"For", "updated service",
 				"expected", "127.0.0.1:54321",
-				"got", serviceInfo.URL,
+				"got", currentInfo.URL,
 			)
 		}
 	})
