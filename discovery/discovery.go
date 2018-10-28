@@ -6,9 +6,11 @@ import (
 	stdLog "log"
 	"math/rand"
 	"os"
+	"strconv"
 	"time"
 
 	"github.com/apex/log"
+	"github.com/emilesalem/go-libs/env"
 	consulapi "github.com/hashicorp/consul/api"
 	consulwatch "github.com/hashicorp/consul/watch"
 )
@@ -21,7 +23,7 @@ type ServiceInfo struct {
 
 //ServiceWatcher is destined to be used to discover other services using their name
 type ServiceWatcher interface {
-	watchService(string) <-chan ServiceInfo
+	WatchService(string) <-chan ServiceInfo
 }
 
 type discoveryService struct {
@@ -30,22 +32,25 @@ type discoveryService struct {
 
 // MakeDiscoveryService creates a new discovery service
 func MakeDiscoveryService(config Config) ServiceWatcher {
-	consulClient, err := consulapi.NewClient(&consulapi.Config{Address: config.consulAddress})
+	consulClient, err := consulapi.NewClient(&consulapi.Config{Address: config.ConsulAddress})
 	if err != nil {
 		log.WithError(err).Fatal("cannot create consul client")
 		panic(err)
 	}
 	log.Info("consul client created")
 	discoveryService := discoveryService{consulClient}
-	if config.localRegistration {
-		discoveryService.registerLocalService(config.serviceName, config.servicePort)
+	// Exceptional use of env in a lib here.
+	// This is a dev env exclusive feature. Just a nice to have.
+	if localReg := env.GetOpt("LOCAL_REGISTRATION"); localReg != "" {
+		port, _ := strconv.Atoi(env.Get("SERVICE_PORT"))
+		discoveryService.registerLocalService(env.Get("SERVICE_NAME"), port)
 	}
 	return discoveryService
 }
 
 // WatchService accepts a service name and returns a ServiceInfo receiving channel;
 // The ServiceInfo sent through the channel will hold the URL of a random healthy service node.
-func (s discoveryService) watchService(name string) <-chan ServiceInfo {
+func (s discoveryService) WatchService(name string) <-chan ServiceInfo {
 	c := make(chan ServiceInfo)
 	s.startWatch(name, c)
 	return c

@@ -12,9 +12,6 @@ func TestDiscovery(t *testing.T) {
 
 	config := Config{
 		"127.0.0.1:8500",
-		true,
-		serviceName,
-		servicePort,
 	}
 
 	w := MakeDiscoveryService(config)
@@ -28,7 +25,7 @@ func TestDiscovery(t *testing.T) {
 		}
 	})
 	t.Run("Watch service test", func(t *testing.T) {
-		serviceInfoC := d.watchService(serviceName)
+		serviceInfoC := d.WatchService(serviceName)
 		if serviceInfoC == nil {
 			t.FailNow()
 		}
