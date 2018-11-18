@@ -1,4 +1,4 @@
-# Workjam go-lib
-### a library of packages shared by workjam Go services.
+# go-lib
+### a library of packages to be shared by Go services.
 
 
